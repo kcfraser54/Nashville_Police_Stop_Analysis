@@ -1,0 +1,516 @@
+---
+title: "Police Stop Data in Nashville"
+output: html_document
+author: Peter Heitkemper, Joshua Reingold, Enrique Rodriguez, Kyle Fraser
+---
+
+# Introduction
+Recent events have made racial disparity an even more important topic of discussion within the United States. We find it in our collective interest to investigate how race affects the results of police traffic stops. Using our analysis we will come closer to understanding to what extent racial bias is present in policing.   
+
+# Methods
+The Stanford Open Policing Project collects data from local police traffic stops in cities across the country. For our analysis we used the Nashville police stop data. This data set provides comprehensive information of police stops up until 2017, the following years were excluded in the analysis. As we are only concerned with vehicular stops, we filtered out any pedestrian stops or any cases where race was not recorded.
+
+Next, we made a table to find the number of stops each year. Then we made a table to find the number of total stops as a function of race. Finally, we created a graph of the number of police stops from 2010 to 2016 as a function of race. Using this analysis, we can understand the proportion of drivers of each race stopped over time.
+
+By incorporating demographics data from the US Census, we were able to find the breakdown of race within Nashville. This information will give us a meaningful look into instances of racial bias. For example, if there is a higher percentage of stops for a race than the percentage that race makes of the population then there may be a case of racial disparity. Additionally, further analysis such as hit rate will rely on these proportions. 
+
+Next, we analyze the hit rate for each race, contingent on the number of successful searches. To define successful searches, we filter our stops to searches conducted and then analyze the number of searches that are successful (e.g. those that uncover contraband) to determine if different racial groups are subjected to different search standards. We can continue this analysis by grouping our hit rates by race and precinct. This will allow us to focus our information into more geological terms.
+
+We searched the data and began to filter out precincts considering the white minimum hit rate and found precincts with ambiguous search results of zero. We investigate these ambiguous precincts and consider that the precinct may be a university and is removed from our data for analysis because there may be qualitatively different searches in the university than other locations.
+
+We will now use the veil of darkness test as an additional possible indication of racial bias during police stops. The inter-twilight period found for all of the dates gives a time where it is either daytime or nighttime depending on the time of year. We can compare stops as a function of race between this inter-twilight period to understand the proportion of drivers of a particular race that are stopped when it is light out and stopped when it is dark out. It is more difficult for racial bias to occur during night time. Therefore, an indication of potential racial bias is found when drivers of a particular race are stopped more often during daytime periods and less during night time periods.
+
+The following libraries utilized.
+```{r warning=FALSE}
+
+#Load Libraries
+library(tidyverse)
+library(lubridate)
+#veil of darkness
+library(suncalc)
+library(lutz)
+```
+
+# Results
+
+The table we created compares the number of stops as a function of subject race. Analysis reveals that different races accounted for a varying number of stops.Those of black and white subject races were stopped most frequently, accounting for about two thirds of the overall stops. At the same time, the rest of the subject races only accounted for a third of the overall traffic stops. Without accounting for the population breakdown by race of the Nashville area, we are unable to discover any bias that may be present. 
+
+The graph created from the data highlights the proportion of stops of each race from December 2009 to 2017. Analysis reveals that stop rates of those who of the asian, pacific islander, hispanic, other, or unknown subject races are relatively consistent from 2010 to 2017. The stop rates for these races are also very low in proportion to stops of those who are black or white.The stop rates of black and white driver were extremely high in 2010, our earliest data, and then spiked around 2012. After 2012, stop rates of these races began to decline. 
+
+The benchmark test gave an indication of racial bias among Hispanic, Asian and Pacific Islanders. The stop rate for asian pacific islander was 71%, Hispanic was 51%, white was 26% and black was 18%. These numbers may be inaccurate due to difficulty in obtaining thorough demographic data. However, further analysis may reveal more information. 
+
+Our results for the outcome test showed that the hit rate of searches of hispanic drivers was roughly 10% and hit rates of drivers of other races was roughly twice that number. 
+
+Initial veil of darkness test results show that only black drivers were stopped at a greater proportion during the day and therefore, evidence for racial bias is only present for black drivers at this time. After conducting the veil of darkness test using the coefficient of darkness, we then found that both black drivers and hispanic drivers are subject to greater proportions of searches during the day, at the same time, the standard error for this number pertaining to hispanic drivers is high so this data is insignificant. After conducting the same test when taking into account precincts, we again found that black drivers were stopped during the day with a much higher proportion, accounting for about a 4% difference. 
+
+
+We analyzed traffic stop data from Nashville.
+
+## Nashville Dataset
+
+```{r}
+
+# Load the data 
+stops = read_rds(file.choose())
+
+
+```
+
+```{r}
+# Remove incomplete years
+stops <- filter(stops, year(date) < 2017)
+
+```
+Here is the population breakdown given by the US census for 2019.
+```{r}
+#show components of dataset
+#colnames(stops)
+
+#census data
+##Suject_Race variable for 2019
+
+population_2019 <- tibble(
+  subject_race = c(
+    "asian/pacific islander", "black", "hispanic", "other","white"
+  ),
+  num_people = c(24820,187159,69765,17441,371634)
+  
+) 
+
+```
+## First Analysis
+
+Our first analysis of the data set is used to generate overall police stops by year, and also the number of police stops as a function of race over time. Analysis of this data will give us an understanding of the frequency of police stops depending on race, without taking into account census data pertaining to the overall population of Nashville. 
+
+The number of stops as a function of subject race are given by the following table.
+
+```{r}
+
+#remove where race is not identified
+na.omit(stops, cols = subject_race)
+
+#we only want vehicular stops
+stops <- stops %>% filter(type == "vehicular") 
+#filter check
+#stops %>% count(type) 
+
+#Make a table of the number of stops as a function of subject race
+# Number of stops per year
+stops %>% 
+  
+  count(subject_race)
+
+stops %>% 
+  
+  count(year = year(date))
+
+```
+
+Graph of Year vs Number of Stops by Race
+
+```{r}
+#use ggplot to display year vs number of stops, per subject race
+stops %>% 
+  count(year = year(date), subject_race) %>%
+  ggplot(aes(x = year, y = n, color = subject_race)) +
+  geom_point()+ geom_line()
+
+```
+Our first analysis does not give any strong evidence towards racial bias in policing because we have yet to factor in census data so that proportions can be found for drivers of different races being stopped. Without the census data for the population, we don’t yet have a clear understanding of these results. At the same time, we may infer that the majority of drivers in Nashville are white, because of the high frequency of stops. We also may infer that there are a large number of black drivers in Nashville because of the high frequency of stops, but we may also infer that the high frequency in stops of black drivers is a result of racial bias. Finally, we may infer that Nashville drivers of other races are similar in population size and again, evidence of racial disparity is difficult to discern. 
+
+## Benchmark Test
+
+### Census Data
+Proportion is found by dividing the total number of people in Nashville identifying as a specific race divided by the total number of people in Nashville. Next, the stop rate was determined by dividing the number of stops per race by the population of that race.
+Using the census numbers, the proportion of each race in the local population is given below. Nashville's population is over 55 % white. From this, we can say definitively that all other races are minorities in this area. 
+
+```{r}
+stops %>%
+  mutate(subject_race = as.factor(subject_race))
+## Proportion of each race
+population_2019 %>% 
+  mutate(prop = num_people / sum(num_people))
+```
+### Stop Rate
+The stop rate is the number of stops divided by the number of drivers in each racial group. 
+```{r}
+#adding the stop rate and population to our table
+stops %>%
+  count(subject_race) %>% 
+  left_join(
+    population_2019,
+    by = "subject_race"
+  ) %>% 
+  
+# n is the number of stops for a given race and num_people is the population size of that race.
+  mutate(stop_rate = num_people/n)
+```
+Results from this benchmark test revealed a disproportionate stop rate among different races. Asian and pacific islander driver exhibit a relatively high stop rate when census data is taken into account. Similarly, hispanic drivers, although exhibiting a slighly lower stop rate, still exhibit a relatively high stop rate when compared to black and white drivers. The stop rate of black drivers is low and indicative of a lack racial bias. Even though there are much greater number of black drivers than hispanic or asian and pacific islander drivers, when proportions are taken into account, racial bias seems to be much more prevalent for drivers who are asian/pacific islander or hispanic. A lack of racial bias towards black drivers also seems evident by the stop rate of white drivers which is actually higher than that of black drivers. Overall, obvious racial bias is found in the stop rates of hispanic and asian/pacific islanders is found, but not for black drivers. We expect racial bias to be present among police when stopping black drivers so further analysis needs to be done to understand these results. 
+
+## Outcome Test
+To define successful searches, we used R to begin filtering our stops to searches conducted, we can then begin analyzing the number of searches that are successful (e.g. those that uncover contraband) to determine if different racial groups are subjected to different search standards. We can continue this analysis by grouping our hit rates by racial groups to different districts or precincts.  This will allow us to begin to narrow or focus our information into more geological terms.If race reveals differing hit rates, it can be implied that racial groups are subjected to unfair standards.
+
+```{r}
+## Filter stops to searches conducted
+stops %>% 
+  filter(search_conducted) %>% 
+  group_by(subject_race) %>% 
+  summarize(
+    hit_rate = mean(contraband_found, na.rm = T)
+  )
+```
+```{r}
+## Adjusting for location computing hit rates by race and district.
+hit_rates <- 
+  stops %>% 
+  filter(search_conducted) %>% 
+  group_by(subject_race, precinct) %>% 
+  summarize(hit_rate = mean(contraband_found, na.rm = T))
+
+hit_rates
+```
+
+Our data is then reshaped to include all races to have their own columns and hit rates in another column respectively to more easily compare the hit rates of different races.
+We then plot our data to compare white hit rate with minority group drivers hit rates where the diagonal indicates equal hit rates to compare the different hit rates of the different groups.
+```{r}
+##  Too many hit rates to compare on one table.  Reshape table so that each district has its own row, minority race, minority hit, and white hit in district.
+# Reshape table to show hit rates of minorities vs white drivers
+hit_rates <-
+  hit_rates %>% 
+  filter(subject_race %in% c("black", "white", "hispanic" , "asian/pacific islander" , "other")) %>% 
+  spread(subject_race, hit_rate, fill = 0) %>% 
+  rename(white_hit_rate = white) %>% 
+  gather(minority_race, minority_hit_rate, c(black, hispanic, "asian/pacific islander", "other")) %>%
+  arrange(precinct)
+
+hit_rates
+```
+
+
+```{r}
+#  Plot Data
+# We'll use this just to make our axes' limits nice and even
+
+max_hit_rate <-
+  hit_rates %>% 
+  select(ends_with("hit_rate")) %>% 
+  max()
+
+hit_rates %>% 
+  ggplot(aes(
+    x = white_hit_rate,
+    y = minority_hit_rate
+  )) +
+  geom_point() +
+  # This sets a diagonal reference line (line of equal hit rates)
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  # These next few lines just make the axes pretty and even
+  scale_x_continuous("White hit rate", 
+    limits = c(0, max_hit_rate + 0.01),
+    labels = scales::percent
+  ) +
+  scale_y_continuous("Minority hit rate", 
+    limits = c(0, max_hit_rate + 0.01),
+    labels = scales::percent
+  ) +
+  # This makes sure that 1% on the x-axis is the same as 1% on the y-axis (## Note The x- axis )
+  coord_fixed() +
+  # This allows us to compare black v. white and Hispanic v. white side by
+  # side, in panels
+  facet_grid(. ~ minority_race)
+```
+
+Most dots lie under the equal hit rate diagonal.  This indicates that the white hit rate is higher than the minority hit rate. This could imply that the different groups drivers may be subjected to different standards.
+
+```{r}
+## size each of the points by number of searches
+# Get corresponding number of searches (to size points).
+# Again, for each district we want to know the number of white+black searches
+# and white+Hispanic searches. This requires the same spreading and gathering
+# as our previous data-munging.
+search_counts <-
+  stops %>% 
+  filter(
+    search_conducted, 
+    subject_race %in% c("black", "white", "hispanic" , "asian/pacific islander" , "other")
+  ) %>%  
+  count(precinct, subject_race) %>% 
+  spread(subject_race, n, fill = 0) %>% 
+  rename(num_white_searches = white) %>% 
+  gather(minority_race, num_minority_searches, c(black, hispanic, "asian/pacific islander", "other")) %>% 
+  mutate(num_searches = num_minority_searches + num_white_searches) %>% 
+  select(precinct, minority_race, num_searches)
+#using data in hit rates, compose graphs for each race
+hit_rates %>% 
+  left_join(
+    search_counts, 
+    by = c("precinct", "minority_race")
+  ) %>% 
+  ggplot(aes(
+    x = white_hit_rate,
+    y = minority_hit_rate
+  )) +
+  geom_point(aes(size = num_searches), pch = 21) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  scale_x_continuous("White hit rate", 
+    limits = c(0, max_hit_rate + 0.01),
+    labels = scales::percent
+  ) +
+  scale_y_continuous("Minority hit rate", 
+    limits = c(0, max_hit_rate + 0.01),
+    labels = scales::percent
+  ) +
+  coord_fixed() +
+  facet_grid(. ~ minority_race)
+```
+## Investigating Anomolies.
+In order to begin to find trends in our data, we must begin to look for anomalies. We searched the data and began to filter out precincts considering the white minimum hit rate and found precincts with ambiguous search results of zero.
+
+```{r}
+hit_rates %>% 
+  filter(white_hit_rate == min(white_hit_rate))
+```  
+
+We investigate these ambiguous precincts and consider that the precinct may be a university and is removed from our data for analysis because there may be qualitatively different searches in the university than other locations.
+
+```{r}
+# Hint: Note that districts in our dataset are encoded as characters, 
+# so U is actually "U"
+stops %>% 
+  filter(precinct == "U") %>% 
+  count(location, sort = T)  
+```  
+
+ 
+```{r}
+## Remove Precinct U
+## This could be a university.
+# Remember: Precinct U in our dataset are encoded as characters,
+stops %>% 
+  filter(search_conducted, precinct != "U") %>% 
+  group_by(subject_race) %>% 
+  summarize(
+    hit_rate = mean(contraband_found, na.rm = T)
+  )
+
+## compare to old data
+##asian/pacific islander	0.1717033			
+##black	                  0.2067213			
+##hispanic	              0.1062651			
+##white	                  0.2003442			
+##other	                  0.1991525			
+##unknown	                0.1449275			
+##NA	                    0.1521739	
+```  
+
+Initial observations display that in Nashville, black and white people have relatively the same hits while hispanics are almost half of blacks and whites respectively. This data hints that when a Hispanic person is stopped, there is less certainty or evidence that the person has contraband that lead to twice as many unwarranted searches.
+
+After we grouped our data by precinct, we were then able to create mass plots of the data and found ambiguous data.  After further investigation we determined there were precincts that could be misleading. We found a university with data we deemed necessary to remove. After adjusting our data , it resulted in a one percent difference in each respective hit by race.
+
+## Veil of Darkness Test
+Now we will conduct the veil of darkness test between minority drivers and white drivers. The veil of darkness test will give us a different way to analyze potential racial bias in policing. By analyzing stops that occurred at a time of day where it is light or dark out depending on the time of year, the inter-twilight period, a comparison can be made between the proportions of drivers of a specific race stopped. Because it is more difficult to racially profile individuals in the dark, evidence for racial bias is present when a greater proportion of drivers of a specific race are stopped when it is light out. We will then analyze the coefficient of darkness, measuring the extent to which darkness influences whether a stopped driver will be a minority. Additionally, we will use data for all minority drivers because of indications of racial profiling of drivers of multiple races. A negative coefficient for the coefficient of darkness tells us that darkness decreases the likelihood that a stopped driver is a minority. 
+
+```{r}
+
+# Get timezone for Nashville
+tz <- lutz::tz_lookup_coords(36.16784, -86.77816, warn = F)
+
+# Helper function
+time_to_minute <- function(time) {
+  hour(hms(time)) * 60 + minute(hms(time))
+}
+
+# Compute sunset time for each date in our dataset
+sunset_times <- 
+  stops %>%
+  mutate(
+    lat = 36.16784,
+    lon = -86.77816
+  ) %>% 
+  #run function based on date and position
+  select(date, lat, lon) %>%
+  distinct() %>%
+  getSunlightTimes(
+    data = ., 
+    keep = c("sunset", "dusk"), 
+    tz = tz
+  ) %>% 
+  #add data to table
+  mutate_at(vars("sunset", "dusk"), ~format(., "%H:%M:%S")) %>% 
+  mutate(
+    sunset_minute = time_to_minute(sunset),
+    dusk_minute = time_to_minute(dusk),
+    date = ymd(str_sub(date, 1, 10))
+  ) %>% 
+  select(date, sunset, dusk, ends_with("minute"))
+```
+
+Here we are looking for Nashville's inter-twilight period.
+
+```{r}
+#inter twilight period between around 5 and 8
+sunset_times %>% 
+  filter(dusk == min(dusk) | dusk == max(dusk))
+```
+
+Now we will join the sunset information with stop information, comparing black to white drivers between dusk periods.
+
+```{r}
+#add sunset times to data set
+vod_stops <- 
+  stops %>% 
+  left_join(
+    sunset_times,
+    by = "date"
+  ) %>% 
+  #define variables
+  mutate(
+    minute = time_to_minute(time),
+    minutes_after_dark = minute - dusk_minute,
+    is_dark = minute > dusk_minute,
+    min_dusk_minute = min(dusk_minute),
+    max_dusk_minute = max(dusk_minute),
+    is_black = subject_race == "black",
+    is_hispanic = subject_race == "hispanic",
+    is_asian = subject_race == "asian/pacific islander"
+  ) %>% 
+  filter(
+    # Filter to get only the inter-twilight period
+    minute >= min_dusk_minute,
+    minute <= max_dusk_minute,
+    # Remove ambigous period between sunset and dusk
+    !(minute > sunset_minute & minute < dusk_minute),
+    # Compare only white and minority drivers
+    subject_race %in% c("black","hispanic", "asian/pacific islander", "white")
+  )
+```
+Now we will compute the stops in our new, filtered data frame.
+
+```{r}
+#retrieve data from specific row
+vod_stops %>% nrow()
+```
+ If we filter the data to stops that occurred in the narrow window from 6:30 p.m. to 6:45 p.m., we can compute what proportion of stops were of minority drivers for stops when it was dark and compare that to the proportion for stops when it was not dark yet.
+
+```{r}
+#filter data to 15 min. window interval for each race
+vod_stops %>% 
+  filter(time > hm("18:30"), time < hm("18:45")) %>% 
+  group_by(is_dark) %>% 
+  summarize(prop_black = mean(is_black))
+
+vod_stops %>% 
+  filter(time > hm("18:30"), time < hm("18:45")) %>% 
+  group_by(is_dark) %>%
+  summarize(prop_hispanic = mean(is_hispanic))
+
+vod_stops %>% 
+  filter(time > hm("18:30"), time < hm("18:45")) %>% 
+  group_by(is_dark) %>%
+  summarize(prop_asian = mean(is_asian))
+```
+
+
+Now we will run a logistic regression model and find the coefficient of darkness to see if the previous results hold for the entirety of the inter-twilight period. Then we will take into account precincts because of the potential for differing patrol patterns. 
+
+```{r}
+#model with binomial distribution
+#black
+mod1 <- glm(
+  is_black ~ is_dark + splines::ns(minute, df = 6),
+  family = binomial,
+  data = vod_stops
+)
+#hispanic
+mod2 <- glm(
+  is_hispanic ~ is_dark + splines::ns(minute, df = 6),
+  family = binomial,
+  data = vod_stops
+)
+#asian
+mod3 <- glm(
+  is_asian ~ is_dark + splines::ns(minute, df = 6),
+  family = binomial,
+  data = vod_stops
+)
+#print summaries
+summary(mod1)$coefficients["is_darkTRUE", c("Estimate", "Std. Error")]
+
+summary(mod2)$coefficients["is_darkTRUE", c("Estimate", "Std. Error")]
+
+summary(mod3)$coefficients["is_darkTRUE", c("Estimate", "Std. Error")]
+
+
+```
+This data gives an indication that both black and hispanic drivers are stopped more often during the day. 
+
+Now we will control the model for location to account for potential varying policing patterns. 
+
+```{r}
+#control for location with prescint label 
+mod4 <- glm(
+  is_black ~ is_dark + splines::ns(minute, df = 6) + as.factor(precinct ),
+  family = binomial,
+  data = vod_stops
+)
+
+mod5 <- glm(
+  is_hispanic ~ is_dark + splines::ns(minute, df = 6) + as.factor(precinct ),
+  family = binomial,
+  data = vod_stops
+)
+
+mod6 <- glm(
+  is_asian ~ is_dark + splines::ns(minute, df = 6) + as.factor(precinct ),
+  family = binomial,
+  data = vod_stops
+)
+
+summary(mod4)$coefficients["is_darkTRUE", c("Estimate", "Std. Error")]
+
+summary(mod5)$coefficients["is_darkTRUE", c("Estimate", "Std. Error")]
+
+summary(mod6)$coefficients["is_darkTRUE", c("Estimate", "Std. Error")]
+```
+
+Based on the results when taking precinct into account, black drivers experienced a significant decrease in police stops during hours of darkness. On the other hand asian/pacific islander and hispanic drivers experienced an increase in police stops during hours of darkness. For black drivers, this coefficient is practically significant because the standard error is reasonably small and a 95% confidence interval does not contain 0. For hispanic drivers, the coefficient is practically insignificant because the standard error is large and a 95% confidence interval contains 0. At the same time, for asian/pacific islander drivers, the coefficient is statistically significant because the standard error is small and a 95% confidence interval does not contain 0.
+
+Overall, when accounting only for difference in proportion between light and dark times, racial bias seems evident only for black drivers. At the same time, when the coefficient of darkness is taken into account, racial bias seems evident for both black and hispanic drivers, although in the case of hispanic drivers, the coefficient is insignificant because the standard error is large and a 95% confidence interval contains 0. Again, when taking into account the precinct, it can be seen that black drivers are pulled over to a greater extent during light hours and the standard error shows this to be significant. This time, it is shown that hispanic drivers are pulled over to a greater extent during hours of darkness but again, a large standard error, including 0 in a 95% confidence interval, renders these numbers insignificant. Throughout these tests, asian drivers are shown to be pulled over with a greater frequency during hours of daylight and the standard error is small and does not include 0, giving evidence for significance in the coefficient. 
+
+The veil of darkness test has now given us additional information regarding evidence for racial bias present in Nashville police stops. More specifically, we see that racial bias is most likely present when black drivers are pulled over. We can now use this new information to help assess the extent of racial bias in policing along with our previous analyses. 
+
+# Discussion
+After analysis, we found that our data still needs to be further investigated to find more "outliers" that may be tampering with our data or preventing us from finding evidence that minority groups are subjected to different search standards. We should also dive deeper into the data and investigate from misleading data.
+
+In Nashville, after considering that different locations (precincts) may contain ambiguous information, the revised data hints that hispanics are almost twice as likely to be searched without uncovering contraband than any other racial group. We need to take into consideration where and how we are interpreting the likelihood of a person facing racial disparity during traffic stops.
+
+After completing our first analysis and then comparing to census data using the benchmark, we initially found that asian/pacific islander and hispanic drivers were much more likely to be pulled over than black or white drivers. This initially leads us to believe that racial bias is most present for these driver races. Similarly, after completing the outcome test, our results lead us to believe that racial bias is present during stops of hispanic drivers because hit rates for hispanic drivers were roughly half that of hit rates of other races. At the same time, hit rates of other races were roughly proportional so from this it is difficult to determine racial bias outside of the obvious bias towards hispanic drivers. Following this, after completing the veil of darkness test it was shown that racial bias for asian/pacific islander and hispanic drivers was not evident which makes the previous results more ambiguous. At the same time, much evidence was found for racial bias when black drivers were stopped because the of the high proportion of black drivers stopped during hours of light versus hours of dark. 
+
+In conclusion, using different analysis techniques, racial bias was observed for all minority groups. Improvements could be made in cleaning the data and ensuring no discrepancies in the census data. Further analysis could be done on breaking the demographics of the city down by neighborhood to observe any differences in policing habits. Additionally, an area of interest may be in pedestrian rather than vehicular stops. Overall, our analysis was in no way comprehensive yet managed to confirm evidence of racial bias in Nashville. We suggest further, more conclusive analysis to be performed. 
+
+
+# Limitations
+
+*The data entered into this data set was entered in by individuals and as such any flaw in their data collection will alter the validity of the data set. Pertaining to Nashville population demographic, we don’t exactly know how many people are living in Nashville instead of simply working there which may alter results. Also, stop rates are not indicative of the individual being pulled over and therefore may not give a completely accurate view of the likelihood of getting pulled over as a driver of a particular race. Our data may contain stops and searches performed by drivers that reside outside of Nashville. This data can skew our interpretation of racial disparity by region. Similarly, we are limited to the locations we decide to use. In our case we have two locations to choose from (i.e. zone or precinct) and different variables distinguishing minority groups. Therefore we do not know which areas the individual precincts refer to for more in depth analysis. This analysis also does not take into account the area surrounding Nashville and only compares stops in Nashville. People living in Nashville may experience differing levels of police bias outside of the city. 
+
+Our use of 2019 census data may not completely align with the population data from 2010 - 2017 even though it still gives us a decent estimate of the overall population for Nashville. Also, We do not have a good understanding of which police departments are most likely to racially profile or who the specific police officers are who are accountable for most racial profiling. Similarly, While we take into account precincts to account for different patrol patterns, we do not know what those patrol patterns are, only that they differ. 
+
+Because of the small proportions and large standard error for our logistic regression model when conducting the veil of darkness test for hispanic drivers, we cannot find evidence here of racial bias for this particular test, despite the fact that we found that hispanic drivers were twice as likely to be searched without success as other drivers. So while we expected to find evidence of racial bias during the veil of darkness test for hispanic drivers, because we did not, our understanding of the problem is slightly altered and prompts for further analysis. Furthermore, the veil of darkness test is limited because it does not take into account the driving patterns of individuals. There may be a different population of drivers who drive in period of dark ratherr than periods of light.  
+
+In conclusion, due to these limitations, the conclusions drawn are far from definitive but rather serve as an indication for further, meaningful research.
+
+
+# Future Work
+
+Our future work will include finding data for the area surrounding Nashville to determine whether the results found for Nashville hold up with the area around it. Then we may potentially identify differences in police practice depending on the specific location around Nashville and combining this data to generate a more clear view of the area as a whole. Additionally, we would find data on each individual precinct in order to determine if certain precincts are more susceptible to racial bias, and then use these areas to give us a more in depth answer to our question of racial profiling by police. We also will identify specific patrol pattern in conjunction with this to also give us a greater indication to which precincts are more susceptible to racial bias. Also, we will attempt to find data on individual police officers within Nashville to identify which individuals are most responsible for racial profiling to generate a breakdown of racial bias by officer. This will give a much more detailed understanding of the problem. After this, in order to reduce limitations in our veil of darkness test, we will find data for drivers in Nashville which takes into account driving patterns of individuals. Understanding driving patterns of the Nashville population during hours of darkness would add much needed detail to our veil of darkness test, allowing us to identify relevant population changes in drivers in Nashville and taking those into account. 
+
+
+
+# References
+This code was obtained from the tutorial provided by the Open Stanford Policing Project with minimal additions or changes.
+
+E. Pierson, C. Simoiu, J. Overgoor, S. Corbett-Davies, D. Jenson, A. Shoemaker, V. Ramachandran, P. Barghouty, C. Phillips, R. Shroff, and S. Goel. “A large-scale analysis of racial disparities in police stops across the United States”. Nature Human Behaviour, Vol. 4, 2020.
+
+2019 Census data for Nashville was obtained through the U.S. census Bureau website.
+https://www.census.gov/quickfacts/fact/table/nashvilledavidsonbalancetennessee/IPE120219
+
